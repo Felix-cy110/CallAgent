@@ -1,0 +1,27 @@
+CallAgent Session
+
+Adapted from Tutti
+Copyright 2025-2026 The Tutti Authors
+
+"The Tutti Authors" refers to the contributors listed in the repository's
+revision history.
+
+This product includes software developed at Nexight (https://tutti.sh).
+
+Source repository: https://github.com/tutti-os/tutti
+Source revision: 207beeea554435618dffd3b579d0ffe112b065c4
+Source files:
+- packages/agent/runtimeprep/skill_templates/tutti-cli.md
+- packages/agent/runtimeprep/skill_templates/tutti-handoff.md
+- packages/agent/runtimeprep/policy_templates/provider-mention-routing.md
+
+Modified for CallAgent on 2026-11-22:
+- Extracted session reference and existing-session messaging instructions.
+- Rewrote the instructions in Chinese without Tutti's Go template bindings.
+- Limited scope to local Claude Code, Codex and WorkBuddy sessions.
+- Removed Agent creation, other mention types and non-session workflows.
+- Separated runtime capability discovery from the Tutti CLI reference.
+- Documented the current lack of standalone native-session adapters.
+
+This adapted skill is distributed under Apache-2.0; see LICENSE in this folder.
+CallAgent's original project files remain under the repository's MIT license.
