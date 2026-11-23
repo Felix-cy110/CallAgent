@@ -3,7 +3,9 @@
 ## 产品范围
 
 - 以 [产品计划](docs/roadmap.md) 为持续维护的范围依据。
-- 当前只做第一阶段：用户同一台电脑上的 Claude Code、Codex、WorkBuddy 已有会话互相引用与按指令投递。
+- 当前只做第一阶段：后台 Client 连接用户同一台电脑上的 Claude Code、Codex、WorkBuddy Desktop，供已有会话互相引用与按指令投递。
+- AT 入口格式为 `AT <Agent> <session 名称前 10 字>`，每种 Agent 取最活跃的 3 个 session，最多 9 条；会话身份独立于标题和排名。
+- 具体交互和原生接入依据见 [本机桌面与 AT 设计](docs/desktop-at-design.md)；宿主菜单动态刷新必须实测，不能把文件写入当作菜单已生效。
 - 后续第二阶段为局域网跨电脑，第三阶段为连接同一配置公网服务的电脑；当前不实现。
 - 只做 session，不扩展其他 `@` 功能，不创建 Agent，不引入 GUI。
 - C++20、CMake、libhv 为固定技术栈；业务代码使用标准 C++20。

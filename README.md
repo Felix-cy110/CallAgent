@@ -22,9 +22,11 @@ CallAgent 将 Tutti 的 `@session` 能力抽取为端侧 Client Skill，让 **Cl
 
 ## Session Skill
 
+目标交互：本机后台 Client 汇总三个 Desktop 的 session，为每端最活跃的 3 个生成 AT Skill 入口，最多 9 个。用户在桌面端的 `/` 菜单选择 `AT codex 手机端小小优化` 这样的条目；session 名超过 10 个字截断，实际操作仍绑定原生会话 ID。详细方案及参考实现见 [本机桌面与 AT 设计](docs/desktop-at-design.md)。
+
 独立包位于 [`skills/callagent-session/`](skills/callagent-session/)，入口是 [SKILL.md](skills/callagent-session/SKILL.md)，包含会话定位、上下文读取、明确指令后的投递与结果处理规则。来源与抽取边界见 [抽取记录](docs/session-skill-extraction.md)。
 
-**当前交付是 Skill 抽取。** 三种 Agent 的原生桌面会话适配尚未实现，`callagent` 仍是最小工程入口，没有会话子命令；安装 Skill 不等于完成三端互通。
+**当前已完成 Skill 抽取与桌面接入源码调查。** 后台 Client、动态 AT 发布和三种 Agent 的原生桌面会话适配尚未实现，`callagent` 仍是最小工程入口，没有会话子命令；安装 Skill 不等于完成三端互通。
 
 ## 构建
 
@@ -45,6 +47,7 @@ CallAgent/
 ├── LICENSE
 ├── README.md
 ├── docs/
+│   ├── desktop-at-design.md
 │   ├── roadmap.md
 │   └── session-skill-extraction.md
 ├── skills/
