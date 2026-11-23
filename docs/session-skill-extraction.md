@@ -45,7 +45,7 @@ Tutti 没有名为 `session` 的独立运行时 Skill。`@session` 的入口是 
 
 `skills/callagent-session/` 可作为独立 Skill 包交给支持 `SKILL.md` 的宿主。使用包时保留 `references/`、`LICENSE` 和 `NOTICE`。具体安装路径由各 Agent 的实际 Skill 机制决定；本次没有写入用户全局 Skill 目录，也没有假定 WorkBuddy 已支持此目录格式。
 
-当前 CallAgent 二进制尚无会话功能，所以包内先定义操作流程与能力约定；不提供虚构的安装器或可执行命令。三端原生适配、安装路径及端到端运行验证属于 [第一阶段后续工作](roadmap.md)。
+初次抽取时仅提供操作流程。2026-11-23 已补充本机后台 Client、三端适配器和动态 AT 文件发布，SKILL.md 已更新为实际存在的 CLI 命令。安装方法和当前能力边界见 [运行时文档](runtime.md)，实机与菜单验收状态见 [产品计划](roadmap.md)。
 
 ## 许可证与来源保留
 

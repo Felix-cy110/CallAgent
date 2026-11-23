@@ -19,6 +19,16 @@
 - 只根据真实工具列表、帮助和接口写 Skill 命令，不发明未实现的子命令。
 - 保留抽取包内 Apache-2.0 LICENSE 和 NOTICE；项目自有代码使用 MIT。
 
+## 运行时代码
+
+- 运行命令、安装方式和实际限制见 [运行时文档](docs/runtime.md)。
+- 分层沿用 ObeingWorkspace：application 编排、domain 规则、providers 适配、transport 连接、persistence 存储、skills 发布。领域规则不依赖桌面进程或数据库。
+- 资源用 RAII 管理；外部等待只持有对应适配器锁，不持有目录状态锁。业务代码保持标准 C++20。
+- 生成 Skill 按稳定 key 绑定，原子替换完整包，只回收所有权与文件摘要均匹配的生成目录。
+- 发送前落盘 request ID 和摘要，未知结果不自动重放；Claude 接收回执不能当作任务完成。
+- WorkBuddy 自动接管只处理已运行且身份匹配的桌面；用户退出或替代实例失败后不自动拉起。测试使用临时桌面替身，禁止为验证代码而重启真实用户桌面。
+- 修改运行时后执行 CMake 构建和 CTest；原生 fixture 不调用模型，不向真实用户会话发送测试消息。
+
 ## Git 与 PR
 
 - Commit 使用 Conventional Commits，格式为 `<type>: <中文说明>`，默认不加 scope。

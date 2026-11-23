@@ -26,12 +26,12 @@
 
 ## 第一阶段工作拆分
 
-1. **抽取 Skill（已完成）**：保留会话引用和向已有会话投递的操作语义；去除其他 mention、Tutti UI 和模板依赖；记录来源及接入边界。
-2. **核实原生适配**：已查阅 ObeingWorkspace 中三端的接入代码，后续移植并逐端验证目录、详情和已有桌面会话投递，记录平台和版本。来源代码包含 IPC、app-server 和只读历史等不同路径，不等于统一协议或已完成适配。
-3. **实现本机运行时与 AT 发布**：用 C++20/CMake/libhv 实现后台 Client、原生适配器、每端 Top 3 排序和动态 Skill 入口；接通真实能力后再写入具体调用方式。
-4. **本机联调**：用受控测试会话验证跨 Agent 的引用和定向投递，确认已有会话身份、消息顺序、回执与结果关联。
+1. **抽取 Skill（已完成）**：独立规则包保留会话引用和向已有会话投递的语义；现已更新为实际 CLI 命令。
+2. **原生适配（代码与协议测试已完成）**：参考 ObeingWorkspace，接通 Codex app-server + Desktop owner IPC、Claude 注册/只读 transcript/peer IPC 与接收插件、WorkBuddy 只读目录 + 认证 Local RPC。
+3. **本机运行时与 AT 发布（已实现）**：单个后台 Client、CLI、稳定身份、每端 Top 3、十个可见字符截断、持久化防重与回执、三份同目标 Skill 包、所有权检查和原子替换。
+4. **实机交互验收（未完成）**：三端真实发送、六个有向跨 Agent 组合、同端跨会话，以及 `/` 菜单的实际名称和刷新机制需要受控会话验证。
 
-当前完成第 1 项及第 2 项的参考源码调查。后台 Client、三端适配和 AT 发布尚未实现；现有 `callagent` 可执行文件仍是输出版本的工程骨架。
+2026-11-23 本次实现首先覆盖 macOS ARM64。三个 CTest 测试组验证业务规则、原生协议模拟和 Claude 插件行为，未向真实用户会话发送测试消息。构建、启动及能力边界见 [运行时文档](runtime.md)。
 
 ## 第一阶段验收边界
 
@@ -43,12 +43,14 @@
 - 无 GUI，不要求 Tutti 运行，不创建 Agent，不扩展到其他 `@` 能力或其他设备。
 - Claude Code ↔ Codex、Claude Code ↔ WorkBuddy、Codex ↔ WorkBuddy 六个有向跨 Agent 组合，以及三种 Agent 各自不同会话间的引用/投递都需要后续实测；当前未验证。
 
-## 尚待核实
+## 实际适配状态
 
-| 对象 | 本次确认范围 | 后续核实内容 |
+| 对象 | 代码与模拟协议验证 | 实机状态与剩余验收 |
 | --- | --- | --- |
-| Claude Desktop Code | ObeingWorkspace 已有注册/插件心跳、transcript 读取与 peer IPC；其文档记录 Windows 真实往返 | CallAgent 适配、macOS 行为、AT 入口发布与刷新 |
-| Codex Desktop | 参考实现用 app-server 读取目录/历史，follower IPC 连接已有桌面 owner | Desktop 候选识别、目标版本兼容、AT 菜单显示与刷新 |
-| WorkBuddy Desktop | 参考实现含只读目录、已鉴权 Local RPC 与 Skill 目录查询 | CallAgent 接入生命周期、连接复用、AT 菜单显示与刷新 |
+| Codex Desktop | 目录、owner 核实、最近文本、定向 start-turn、回执与完成状态 | 只读实机探测已发现 3 个 Desktop-owned 会话；真实投递、继承桌面设置和 AT 菜单待验收 |
+| Claude Desktop Code | 注册、父链 transcript、peer credential、Mods 插件提交、接收回执、防重复 | 本机没有可用的 Desktop session 注册；当前尚未验证 macOS 原生插件加载和真实发送；回执不提供任务完成关联 |
+| WorkBuddy Desktop | macOS 安装发现、已有桌面自动带端口重启、生命周期与互斥测试；当前账号目录、进程身份校验、v2 HMAC、会话读取、投递与回执、连接复用 | macOS WorkBuddy 5.11.3 只读实机探测已通过认证并发现 9 个本地会话，取其中 3 个发布；自动接管已通过隔离进程测试，真实桌面重启、消息投递和 AT 菜单待验收 |
 
-目标支持列表与已验证能力必须分开记录；没有适配器时 Skill 应明确报告不可用。操作系统覆盖范围尚未指定，不能因本次在 macOS 上整理材料就宣称 Windows/Linux 已验证或将产品限制为 macOS。
+AT 包已生成唯一内部 `name`、显示描述及 Codex `display_name`。不能据此保证各宿主都按 `AT <Agent> <标题>` 显示：尤其 Claude 的原生命令名可能采用唯一 ASCII 标识。当前状态明确返回 `menuVerification: not_verified`。
+
+当前每端配置一个实例，读取只提供最近文本摘要，不提供附件和任意历史分页。Windows 尚未实现，Linux 未验证；不把跨平台目标写成已支持能力。阶段 2、3 保持不实现。
