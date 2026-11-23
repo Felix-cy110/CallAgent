@@ -22,9 +22,9 @@ cmake --install build --prefix "$HOME/.local"
 callagent install-claude-bridge
 ```
 
-插件安装到配置中 Claude 根目录的 `skills/callagent-desktop-bridge`，控制目录为其根目录下的 `callagent-desktop-bridge`。它没有 `SKILL.md`，不会额外生成第十个 AT。插件通过原生 Mods hook 接收经过校验的帧，再调用当前桌面 session 的 `prompt.submit`；不修改应用安装包、全局权限或历史。当前引擎版本门槛为参考协议的 `2.1.309+`，限定 `2.1.x`。安装文件不代表已有桌面会话已加载插件；需要确认当前会话产生有效心跳。CallAgent 不自动重启 Claude Desktop。
+插件安装到配置中 Claude 根目录的 `skills/callagent-desktop-bridge`，控制目录为其根目录下的 `callagent-desktop-bridge`。它没有 `SKILL.md`，不会额外生成 AT Skill。插件通过原生 Mods hook 接收经过校验的帧，再调用当前桌面 session 的 `prompt.submit`；不修改应用安装包、全局权限或历史。当前引擎版本门槛为参考协议的 `2.1.309+`，限定 `2.1.x`。安装文件不代表已有桌面会话已加载插件；需要确认当前会话产生有效心跳。CallAgent 不自动重启 Claude Desktop。
 
-默认只在状态目录 `generated/codex`、`generated/claude`、`generated/workbuddy` 生成三份相同目标列表，方便检查。要交给宿主发现，用其实际扫描目录配置发布，例如：
+默认只在状态目录 `generated/codex/at`、`generated/claude/at`、`generated/workbuddy/at` 各生成一个固定 Skill，方便检查。每包包含 `SKILL.md`、`agents/openai.yaml`、`scripts/at`、`LICENSE`、`NOTICE` 和所有权清单，不含固定会话列表或 `target.json`。即使没有可用会话也保留入口。要交给宿主发现，用其实际扫描目录配置发布，例如：
 
 ```sh
 callagent publish --host codex --directory "$HOME/.agents/skills"
@@ -72,11 +72,20 @@ callagent send --target FULL_KEY --request-id operation-001 --text-file /absolut
 callagent receipt --target FULL_KEY --request-id operation-001
 ```
 
-`refresh` 只安排后台扫描；用 `status` 查看结果。每端独立按活动时间取前三，总数最多九个。Codex 与 WorkBuddy 使用原生更新时间，Claude 使用 transcript 修改时间；读取和心跳不会更新时间。未命名回退为“未命名会话”，显示标题按可见字符截到十个。
+`refresh` 只安排后台扫描；用 `status` 查看结果。`list` 的 `targets` 返回每端独立按活动时间取前三的候选，总数最多九个；仅启用 Codex 和 WorkBuddy 时最多六个。`displayLabel` 为候选短标题，`title` 保留完整标题。Codex 与 WorkBuddy 使用原生更新时间，Claude 使用 transcript 修改时间；读取和心跳不会更新时间。未命名回退为“未命名会话”，显示标题按可见字符截到十个。
 
-`key` 包含 provider、配置实例/账号和原生 session ID。标题或排名变化不影响身份。旧入口内容携带完整命令和 key，即使其目录后来退出 Top 3，仍通过已持久化的绑定定位原会话并再次验证；不会换成新排第三的会话。已观察身份保留，上限 10000。单端暂时失败时保留最后成功目录并标为 stale。
+`key` 包含 provider、配置实例/账号和原生 session ID。AT 先查询列表：用户未指定目标时展示候选；目标明确时直接匹配，歧义时才询问。选择序号绑定当次展示列表中的 key，后续排名变化不能改变目标。已选会话即使退出 Top 3，仍可通过持久化身份定位原会话并再次验证。已观察身份保留，上限 10000；旧版本已加载命令中的完整 key 也继续有效。单端暂时失败时保留最后成功目录并标为 stale。
 
-生成 Skill 内部 `name` 是唯一 ASCII 标识，完整 `AT <Agent> <十字标题>` 同时写入描述和 Codex `agents/openai.yaml` 的 `display_name`。文件包用原子目录交换更新；只删除带有效所有权清单且内容未被修改的生成包，保留其他 Skill 和用户改动。**三个 Desktop 的 `/` 菜单是否采用 display_name、是否能热刷新，尚未实机验收。** 尤其 Claude 原生命令名可能显示唯一标识，当前不能声称三个菜单都已显示目标格式。
+每个宿主的内部 Skill `name` 固定为 `at`，Codex `agents/openai.yaml` 的 `display_name` 为 `AT`。操作规则直接来自 `skills/callagent-session/SKILL.md`，生成时填入当前可执行文件和配置的绝对路径。标题、排名和候选数量变化不改写 Skill。**宿主对固定入口的发现、实际名称与加载行为尚未实机验收。** 候选由 Agent 在对话中展示，没有原生 `/` 动态子菜单。
+
+包内 `scripts/at` 使用相同可执行文件和配置，不绑定目标，可以这样调用（示例使用默认状态目录）：
+
+```sh
+"$HOME/.callagent/runtime/generated/codex/at/scripts/at" list
+"$HOME/.callagent/runtime/generated/codex/at/scripts/at" read --target FULL_KEY --limit 20
+```
+
+文件包用原子目录交换更新；重复发布内容相同时保留原文件。升级时先检查本发布目录中的旧 `at-<provider>-<key前40位>` 包和新 `at` 目标：仅迁移所有权、稳定身份及所有文件摘要匹配的旧包。新包发布成功后清理旧包；用户修改、缺失文件、额外文件、符号链接或目标同名冲突会中止该目录的发布，`publication` 返回 `error`，保留原内容。其他未托管 Skill 不受影响。需要先自行处理冲突，再让 Client 重试。
 
 读结果只投影用户/助手文本，明确 `completeHistory: false`。Codex 的 limit 单位为 turn，Claude 为 message，WorkBuddy 为 request；目前只支持最近 1–100 个单位，不支持全文导出、任意页游标和附件。目录扫描不加载会话正文。
 
@@ -94,11 +103,11 @@ Codex owner 探测每轮有 45 秒预算；不足以完成候选确认时保留�
 
 ## 验证记录
 
-- `callagent_core`：每端配额、稳定排序、Unicode 截断、跨配置身份、发布保护、旧入口继续路由、读取不触发发送、授权检查、摘要冲突、回执、断连不重发、重启恢复和失败保留目录。
-- `desktop_protocols`：真实 Client/CLI 进程连接模拟的三端原生 IPC，覆盖 Codex 只读子进程与桌面 owner、Claude 注册/peer socket、WorkBuddy renderer discovery/v2 HMAC/账号匹配、九个发布包和可执行 helper。还验证无 token 与浏览器 Origin 请求拒绝、重复 Client 锁、错账号和未知投递结果。
+- `callagent_core`：每端配额、稳定排序、Unicode 截断、跨配置身份、单一入口、无会话发布、旧包迁移与冲突保护、排名更新不改写 Skill、已选目标继续路由、读取不触发发送、授权检查、摘要冲突、回执、断连不重发、重启恢复和失败保留目录。
+- `desktop_protocols`：真实 Client/CLI 进程连接模拟的三端原生 IPC，覆盖 Codex 只读子进程与桌面 owner、Claude 注册/peer socket、WorkBuddy renderer discovery/v2 HMAC/账号匹配、每宿主一个 AT 包、同一 helper 的目录查询及三端定向读取/发送/回执。还验证无 token 与浏览器 Origin 请求拒绝、重复 Client 锁、错账号和未知投递结果。
 - `workbuddy_supervisor`：真实 Client 管理临时目录中的 C++ 桌面替身，覆盖缺失等待、带端口重启、健康复用、用户退出、Client 重启与句柄隔离、端口冲突、自动发现与登录、禁用接管、退出拒绝、替代进程失败、停止取消、多 Client 互斥和安装范围。测试不操作已安装的桌面。
 - `claude_plugin`：用模拟 Mods 环境验证 hook 注册、心跳、身份拒绝、原生提交、忙碌拒绝和持久化回执防重。
 
 这些测试不调用模型、不向真实用户会话发消息。实机只读检查结果单独记录在产品计划中；模拟协议成功不等于真实版本兼容，更不等于菜单刷新验收。
 
-本次只读实机检查在 macOS 26.6 ARM64 上完成：Codex 返回 3 个不同的 Desktop-owned 会话；WorkBuddy 5.11.3 通过认证读取 9 条当前账号本地目录，发布其中 3 条；Claude 无可用桌面注册。实际生成 6 个 AT 包并通过 Skill 格式校验。没有向真实会话投递消息，也没有安装这些生成包到宿主扫描目录；原生菜单尚未验证。探测 Client 正常退出。
+本次只读实机检查在 macOS 26.6 ARM64 上完成：Codex 返回 3 个不同的 Desktop-owned 会话；WorkBuddy 5.11.3 通过认证读取 9 条当前账号本地目录，取其中 3 条作为候选；Claude 无可用桌面注册。该次只读探测使用旧动态入口版本，得到 6 个候选。单一 AT 的本次变更通过隔离测试验证，未重新连接真实桌面。没有向真实会话投递消息，也没有安装这些生成包到宿主扫描目录；原生菜单尚未验证。探测 Client 正常退出。

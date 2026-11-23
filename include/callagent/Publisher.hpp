@@ -4,9 +4,9 @@ namespace callagent {
 class Publisher {
  public:
   explicit Publisher(Config config) : config_(std::move(config)) {}
-  Json Publish(const std::vector<Session>& sessions) const;
+  Json Publish() const;
  private:
-  void PublishRoot(const PublishRoot& root, const std::vector<Session>& sessions) const;
+  void PublishRoot(const PublishRoot& root) const;
   Config config_;
 };
 }

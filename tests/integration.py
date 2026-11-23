@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import socket
@@ -31,7 +32,7 @@ def wait_for(operation, predicate, seconds=20):
 with tempfile.TemporaryDirectory(prefix='ca-', dir='/tmp') as temporary:
     root = Path(temporary).resolve()
     peers = Peers(root)
-    config = root / 'config.json'
+    config = root / "client's config.json"
     wrapper = root / 'codex-reader'
     wrapper.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(Path(__file__).with_name('desktop_fixture.py'))) +
                        ' --app-server ' + shlex.quote(str(root)) + ' "$@"\n')
@@ -66,8 +67,25 @@ with tempfile.TemporaryDirectory(prefix='ca-', dir='/tmp') as temporary:
         for provider in ('codex', 'claude', 'workbuddy'):
             items = [row for row in snapshot['targets'] if row['provider'] == provider]
             assert len(items) == 3 and items[0]['title'].endswith('3')
-        generated = list((root / 'native-skills').glob('at-*/SKILL.md'))
-        assert len(generated) == 9
+        generated = list((root / 'native-skills').glob('*/SKILL.md'))
+        assert generated == [root / 'native-skills/at/SKILL.md']
+        assert not (root / 'native-skills/at/target.json').exists()
+        helper = root / 'native-skills/at/scripts/at'
+
+        def at(*args, check=True):
+            result = subprocess.run([str(helper), *args], capture_output=True, text=True, timeout=25, check=check)
+            return json.loads(result.stdout) if result.returncode == 0 else result
+
+        assert at('list')['targets'] == snapshot['targets']
+        assert at('read', check=False).returncode != 0  # No implicit target.
+        # The published Skill's list command must use this config, including shell quoting.
+        list_command = re.findall(r'```sh\n(.*?)\n```', generated[0].read_text(), re.S)[0]
+        listed = subprocess.run(shlex.split(list_command), capture_output=True, text=True, timeout=25, check=True)
+        assert json.loads(listed.stdout)['targets'] == snapshot['targets']
+        for provider in ('codex', 'claude', 'workbuddy'):
+            assert list((root / 'state/generated' / provider).glob('*/SKILL.md')) == [root / 'state/generated' / provider / 'at/SKILL.md']
+        for name in ('LICENSE', 'NOTICE', 'agents/openai.yaml'):
+            assert (root / 'native-skills/at' / name).read_bytes() == (Path(__file__).resolve().parents[1] / 'skills/callagent-session' / name).read_bytes()
         # Missing token and browser-origin requests are rejected even on loopback.
         endpoint = f'http://127.0.0.1:{port}/v1/request'
         for headers in ({}, {'Authorization': 'Bearer ' + json.loads((root / 'state/connection.json').read_text())['token'], 'Origin': 'https://example.invalid'}):
@@ -85,23 +103,19 @@ with tempfile.TemporaryDirectory(prefix='ca-', dir='/tmp') as temporary:
         for provider in ('codex', 'claude', 'workbuddy'):
             target = next(row for row in snapshot['targets'] if row['provider'] == provider)
             selected[provider] = target
-            result = run('read', '--target', target['key'], '--limit', '10')
-            assert len(result['messages']) == 2, result
+            result = at('read', '--target', target['key'], '--limit', '10')
+            assert result['target']['key'] == target['key'] and len(result['messages']) == 2, result
             assert provider + ' fixture answer' in result['messages'][1]['text']
             assert 'hidden' not in json.dumps(result) and 'REASONING' not in json.dumps(result)
             assert len(peers.sent[provider]) == 0
-            unauthorized = run('send', '--target', target['key'], '--request-id', 'test', '--text-file', str(message), check=False)
+            unauthorized = at('send', '--target', target['key'], '--request-id', 'test', '--text-file', str(message), check=False)
             assert unauthorized.returncode != 0
-            result = run('send', '--target', target['key'], '--request-id', 'test', '--text-file', str(message), '--authorize')
+            result = at('send', '--target', target['key'], '--request-id', 'test', '--text-file', str(message), '--authorize')
             assert result['status'] in ('accepted', 'submitted', 'admitted'), result
-            receipt = wait_for(lambda: run('receipt', '--target', target['key'], '--request-id', 'test'), lambda row: row['status'] in ('accepted', 'completed'))
+            receipt = wait_for(lambda: at('receipt', '--target', target['key'], '--request-id', 'test'), lambda row: row['status'] in ('accepted', 'completed'))
             run('send', '--target', target['key'], '--request-id', 'test', '--text-file', str(message), '--authorize')
             assert len(peers.sent[provider]) == 1
-        # Execute the generated helper with its bound identity.
         target = selected['codex']
-        helper = root / 'native-skills' / ('at-codex-' + target['key'][:40]) / 'scripts/at'
-        helper_result = subprocess.run([str(helper), 'read'], capture_output=True, text=True, timeout=25, check=True)
-        assert json.loads(helper_result.stdout)['target']['key'] == target['key']
         peers.codex_busy = True
         busy = run('send', '--target', target['key'], '--request-id', 'busy', '--text-file', str(message), '--authorize')
         assert busy['status'] == 'rejected' and len(peers.sent['codex']) == 1
@@ -112,13 +126,13 @@ with tempfile.TemporaryDirectory(prefix='ca-', dir='/tmp') as temporary:
             result = run('send', '--target', target['key'], '--request-id', 'dropped', '--text-file', str(message), '--authorize')
             assert result['status'] == 'uncertain', result
         assert len(peers.sent['codex']) == 2
-        # Account switching preserves the stale menu, but blocks reads and delivery.
+        # Account switching preserves stale candidates, but blocks reads and delivery.
         peers.account = 'another-account'
         assert run('read', '--target', selected['workbuddy']['key'], check=False).returncode != 0
         run('refresh')
         stale = wait_for(lambda: run('status'), lambda row: row['providers']['workbuddy']['stale'])
         assert len(stale['targets']) == 9
-        print('Native Codex/Claude/WorkBuddy fixtures, daemon auth, generated entry and delivery invariants passed')
+        print('Native Codex/Claude/WorkBuddy fixtures, daemon auth, single AT entry and delivery invariants passed')
     finally:
         daemon.terminate()
         try:

@@ -1,0 +1,7 @@
+#pragma once
+namespace callagent::skill_bundle {
+inline constexpr char kSkill[] = R"CALLAGENT(@CALLAGENT_SESSION_SKILL@)CALLAGENT";
+inline constexpr char kMetadata[] = R"CALLAGENT(@CALLAGENT_SESSION_METADATA@)CALLAGENT";
+inline constexpr char kLicense[] = R"CALLAGENT(@CALLAGENT_SESSION_LICENSE@)CALLAGENT";
+inline constexpr char kNotice[] = R"CALLAGENT(@CALLAGENT_SESSION_NOTICE@)CALLAGENT";
+}

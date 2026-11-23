@@ -85,7 +85,7 @@ void Service::Refresh(std::stop_token stop) {
       for (const auto& row : state_["providers"][name].at("sessions")) candidates.push_back(row.get<Session>());
     }
   }
-  auto selected = SelectTargets(std::move(candidates)); auto publication = publisher_.Publish(selected);
+  auto selected = SelectTargets(std::move(candidates)); auto publication = publisher_.Publish();
   { std::lock_guard lock(stateMutex_); selected_ = std::move(selected); publication_ = std::move(publication); }
 }
 Session Service::Target(const std::string& key) {
