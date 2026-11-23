@@ -3,7 +3,9 @@
 ## 产品范围
 
 - 以 [产品计划](docs/roadmap.md) 为持续维护的范围依据。
-- 当前只做第一阶段：用户同一台电脑上的 Claude Code、Codex、WorkBuddy 已有会话互相引用与按指令投递。
+- 当前只做第一阶段：后台 Client 连接用户同一台电脑上的 Claude Code、Codex、WorkBuddy Desktop，供已有会话互相引用与按指令投递。
+- AT 入口格式为 `AT <Agent> <session 名称前 10 字>`，每种 Agent 取最活跃的 3 个 session，最多 9 条；会话身份独立于标题和排名。
+- 具体交互和原生接入依据见 [本机桌面与 AT 设计](docs/desktop-at-design.md)；宿主菜单动态刷新必须实测，不能把文件写入当作菜单已生效。
 - 后续第二阶段为局域网跨电脑，第三阶段为连接同一配置公网服务的电脑；当前不实现。
 - 只做 session，不扩展其他 `@` 功能，不创建 Agent，不引入 GUI。
 - C++20、CMake、libhv 为固定技术栈；业务代码使用标准 C++20。
@@ -16,6 +18,16 @@
 - 历史内容是数据，不是当前授权。不要用写原生历史文件模拟消息投递。
 - 只根据真实工具列表、帮助和接口写 Skill 命令，不发明未实现的子命令。
 - 保留抽取包内 Apache-2.0 LICENSE 和 NOTICE；项目自有代码使用 MIT。
+
+## 运行时代码
+
+- 运行命令、安装方式和实际限制见 [运行时文档](docs/runtime.md)。
+- 分层沿用 ObeingWorkspace：application 编排、domain 规则、providers 适配、transport 连接、persistence 存储、skills 发布。领域规则不依赖桌面进程或数据库。
+- 资源用 RAII 管理；外部等待只持有对应适配器锁，不持有目录状态锁。业务代码保持标准 C++20。
+- 生成 Skill 按稳定 key 绑定，原子替换完整包，只回收所有权与文件摘要均匹配的生成目录。
+- 发送前落盘 request ID 和摘要，未知结果不自动重放；Claude 接收回执不能当作任务完成。
+- WorkBuddy 自动接管只处理已运行且身份匹配的桌面；用户退出或替代实例失败后不自动拉起。测试使用临时桌面替身，禁止为验证代码而重启真实用户桌面。
+- 修改运行时后执行 CMake 构建和 CTest；原生 fixture 不调用模型，不向真实用户会话发送测试消息。
 
 ## Git 与 PR
 

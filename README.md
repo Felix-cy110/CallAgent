@@ -1,59 +1,49 @@
 # CallAgent
 
-CallAgent 将 Tutti 的 `@session` 能力抽取为端侧 Client Skill，让 **Claude Code、Codex、WorkBuddy** 的已有会话相互引用上下文，并按用户明确指令向指定会话发送消息。项目无 GUI，以命令行程序或后台服务形式运行。
+在用户同一台电脑上，让 **Codex Desktop、Claude Desktop Code、WorkBuddy Desktop** 的已有会话相互引用，并在用户明确要求时向指定会话投递消息。技术栈固定为 **C++20、CMake、libhv**，无 GUI。
 
-当前只做本机阶段；后续依次扩展到局域网不同电脑、连接同一配置公网服务的电脑。只做 session，不做其他 `@` 功能。完整范围记录在 [产品计划](docs/roadmap.md)。
+后台 Client 为每种 Agent 选取最近活跃的 3 个会话，生成最多 9 个 AT Skill 包。目标显示格式为 `AT codex 手机端小小优化`；标题按 Unicode 可见字符截取前 10 个，目标身份与标题、排名无关。
 
-## 技术栈
+当前已实现后台服务、CLI、三个原生适配器、动态 Skill 文件发布、投递防重与回执查询，并通过模拟三端原生协议的端到端测试。**当前不宣称三个桌面的 `/` 菜单显示和热刷新已完成验收，也不宣称真实桌面之间的发送已完成联调。** 平台首先落地 macOS；实际验证状态见 [产品计划](docs/roadmap.md)。
 
-- **语言**：C++20
-- **构建系统**：CMake 3.20+
-- **网络库**：libhv v1.3.4
-- **运行形态**：无 GUI 的命令行程序或后台服务
-- **许可证**：自有工程使用 MIT；Tutti 抽取的 Skill 保留 Apache-2.0，见包内 LICENSE/NOTICE
+## 构建与启动
 
-## 工程约束
+需要 CMake 3.20+、C++20 编译器，以及 OpenSSL、SQLite3、ICU 开发库。libhv 由 CMake 固定版本获取；测试使用 Python 3 和 Node.js。
 
-- 业务代码使用标准 C++20，不依赖编译器扩展。
-- 网络通信统一基于 libhv 实现。
-- 不引入 Qt、GTK、Electron 等 GUI 框架。
-- 第三方依赖由 CMake 管理，并锁定明确版本，保证构建可复现。
-- Skill 操作约定与原生会话适配器分离，能力必须以真实接口为准。
-
-## Session Skill
-
-独立包位于 [`skills/callagent-session/`](skills/callagent-session/)，入口是 [SKILL.md](skills/callagent-session/SKILL.md)，包含会话定位、上下文读取、明确指令后的投递与结果处理规则。来源与抽取边界见 [抽取记录](docs/session-skill-extraction.md)。
-
-**当前交付是 Skill 抽取。** 三种 Agent 的原生桌面会话适配尚未实现，`callagent` 仍是最小工程入口，没有会话子命令；安装 Skill 不等于完成三端互通。
-
-## 构建
-
-```bash
-cmake -S . -B build
-cmake --build build
-./build/callagent
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build --output-on-failure
+./build/callagent init
+./build/callagent serve
 ```
 
-首次配置时，CMake 会自动获取 libhv 源码并构建静态库。
+另一个终端中：
 
-## 目录结构
-
-```text
-CallAgent/
-├── AGENTS.md
-├── CMakeLists.txt
-├── LICENSE
-├── README.md
-├── docs/
-│   ├── roadmap.md
-│   └── session-skill-extraction.md
-├── skills/
-│   └── callagent-session/
-│       ├── SKILL.md
-│       ├── agents/openai.yaml
-│       ├── references/tutti-session-commands.md
-│       ├── LICENSE
-│       └── NOTICE
-└── src/
-    └── main.cpp
+```sh
+./build/callagent list
+./build/callagent read --target FULL_KEY --limit 20
 ```
+
+默认配置在 `~/.callagent/config.json`。后台只监听本机环回地址，通过私有 token 验证 CLI。每次读取/发送均重新核实原生目标，不会另起 CLI 会话。只读 app-server 子进程只用于 Codex 目录与历史。
+
+默认生成包位于 `~/.callagent/runtime/generated/<host>/`，供检查后发布到宿主实际扫描目录。Claude 投递需要加载随项目提供的桌面桥接插件。macOS 上，Client 默认自动发现已登录的 WorkBuddy；普通运行实例缺少调试入口时，会请求退出并仅为替代进程设置端口后启动一次。用户主动退出后保持关闭，正常入口直接复用。该过程会重启窗口，尚不判断原生任务是否忙碌；可用 `providers.workbuddy.autoEnableDebugPort: false` 关闭自动接管。安装、发布、后台运行、命令和限制见 **[运行时使用文档](docs/runtime.md)**。
+
+独立操作规则保留在 [`skills/callagent-session/SKILL.md`](skills/callagent-session/SKILL.md)。实际 AT 入口由后台为每个稳定目标生成；安装静态 Skill 本身不会启动 Client。
+
+## 代码组织
+
+| 目录 | 职责 |
+| --- | --- |
+| `src/application` | 配置、目录刷新、身份绑定、读取/投递编排 |
+| `src/domain` | 每端 Top 3、稳定身份、Unicode 标题处理 |
+| `src/providers` | Codex、Claude、WorkBuddy 原生协议适配 |
+| `src/transport` | 本地 HTTP、只读子进程、Unix IPC、认证 WebSocket |
+| `src/persistence` | 原子文件、进程锁、WorkBuddy 只读 Repository |
+| `src/skills` | AT 包生成、所有权校验、原子替换与回收 |
+| `resources/claude-desktop` | 原生 Mods 接收插件；只做本机会话文本投递 |
+| `tests` | 业务不变量、独立 Client/CLI 及三端原生协议 fixtures |
+
+分层和原生接入协议参考 ObeingWorkspace，迁移依据见 [本机桌面与 AT 设计](docs/desktop-at-design.md)。只实现产品计划第一阶段；局域网、公网连接仍是后续阶段。
+
+项目自有代码使用 MIT。抽取包保留 Apache-2.0 LICENSE 与 NOTICE；来源说明保留在 [抽取记录](docs/session-skill-extraction.md)，不写入操作用 SKILL.md。

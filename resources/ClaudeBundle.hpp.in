@@ -1,0 +1,5 @@
+#pragma once
+namespace callagent::claude_bundle {
+inline constexpr char kId[] = "@CALLAGENT_BUNDLE_ID@";
+inline constexpr char kScript[] = R"CALLAGENT(@CALLAGENT_CLAUDE_SCRIPT@)CALLAGENT";
+}
