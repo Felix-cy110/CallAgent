@@ -28,7 +28,7 @@ Tutti 没有名为 `session` 的独立运行时 Skill。`@session` 的入口是 
 
 ## 保留与调整
 
-- 将 Session 能力打包成独立的 `callagent-session` Skill，用户用自然语言、`@session` 或会话链接触发。
+- 将 Session 能力的独立规则保留在 `skills/callagent-session/`。当前发布为单一 `at` Skill，运行时查询会话候选，再通过完整 key 读写；自然语言会话引用需要先从目录定位，不解析会话链接。
 - 保留只读引用与主动投递的区别：被引用的历史不能授权发送消息。
 - 从通用 handoff 中仅取向已有会话投递、继续同一会话、按停止点读取结果的流程。
 - 添加当前产品边界：只接受本机 Claude Code、Codex、WorkBuddy，不能仅凭 URI 宣称目标在本机。
@@ -43,9 +43,9 @@ Tutti 没有名为 `session` 的独立运行时 Skill。`@session` 的入口是 
 
 ## 交付与接入状态
 
-`skills/callagent-session/` 可作为独立 Skill 包交给支持 `SKILL.md` 的宿主。使用包时保留 `references/`、`LICENSE` 和 `NOTICE`。具体安装路径由各 Agent 的实际 Skill 机制决定；本次没有写入用户全局 Skill 目录，也没有假定 WorkBuddy 已支持此目录格式。
+`skills/callagent-session/` 是 AT 操作规则的源码目录，直接使用时依赖 PATH 中的 `callagent`。后台将同一规则发布到 `at/`，填入当前可执行文件与配置绝对路径，携带显示元数据、helper、`LICENSE` 和 `NOTICE`；来源参考保留在源码的 `references/`，不作为运行依赖。具体安装路径由各 Agent 的实际 Skill 机制决定；本次没有写入用户全局 Skill 目录，也没有假定 WorkBuddy 已支持此目录格式。
 
-初次抽取时仅提供操作流程。2026-11-23 已补充本机后台 Client、三端适配器和动态 AT 文件发布，SKILL.md 已更新为实际存在的 CLI 命令。安装方法和当前能力边界见 [运行时文档](runtime.md)，实机与菜单验收状态见 [产品计划](roadmap.md)。
+初次抽取时仅提供操作流程。2026-11-23 已补充本机后台 Client、三端适配器和单一 AT 文件发布，SKILL.md 已更新为实际存在的 CLI 命令。安装方法和当前能力边界见 [运行时文档](runtime.md)，实机与菜单验收状态见 [产品计划](roadmap.md)。
 
 ## 许可证与来源保留
 

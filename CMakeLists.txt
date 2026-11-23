@@ -35,6 +35,19 @@ string(REPLACE "__CALLAGENT_BUNDLE__" "${CALLAGENT_BUNDLE_ID}" CALLAGENT_CLAUDE_
 configure_file(resources/ClaudeBundle.hpp.in generated/ClaudeBundle.hpp @ONLY)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS resources/claude-desktop/hooks/register.js)
 
+# Embed the maintained Skill rules so installed binaries need no source checkout.
+file(READ skills/callagent-session/SKILL.md CALLAGENT_SESSION_SKILL)
+file(READ skills/callagent-session/agents/openai.yaml CALLAGENT_SESSION_METADATA)
+file(READ skills/callagent-session/LICENSE CALLAGENT_SESSION_LICENSE)
+file(READ skills/callagent-session/NOTICE CALLAGENT_SESSION_NOTICE)
+configure_file(resources/SkillBundle.hpp.in generated/SkillBundle.hpp @ONLY)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    skills/callagent-session/SKILL.md
+    skills/callagent-session/agents/openai.yaml
+    skills/callagent-session/LICENSE
+    skills/callagent-session/NOTICE
+)
+
 add_library(callagent_core
     src/domain/Session.cpp
     src/application/Config.cpp

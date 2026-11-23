@@ -43,7 +43,7 @@ std::string RandomHex(std::size_t bytes) {
 std::string Session::Key() const { return Sha256(Json::array({ToString(provider), profile, nativeId}).dump()); }
 void to_json(Json& out, const Session& s) {
   out = {{"key", s.Key()}, {"provider", ToString(s.provider)}, {"profile", s.profile}, {"nativeId", s.nativeId},
-    {"title", s.title}, {"cwd", s.cwd}, {"activityMs", s.activityMs}, {"activitySource", s.activitySource}};
+    {"title", s.title}, {"displayLabel", "AT " + DisplayName(s.provider) + " " + ShortTitle(s.title)}, {"cwd", s.cwd}, {"activityMs", s.activityMs}, {"activitySource", s.activitySource}};
 }
 void from_json(const Json& in, Session& s) {
   s = {ParseProvider(in.at("provider")), in.at("profile"), in.at("nativeId"), in.at("title"), in.at("cwd"), in.at("activityMs"), in.at("activitySource")};
